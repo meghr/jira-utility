@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Jira Utility</title>
+</head>
+<body>
+<h1>Select Month</h1>
+<form action="/fetch-insights" method="post">
+    <label for="month">Month (YYYY-MM):</label>
+    <input type="text" id="month" name="month" placeholder="e.g., 2025-02" required/>
+    <button type="submit">Fetch Insights</button>
+</form>
+</body>
+</html>

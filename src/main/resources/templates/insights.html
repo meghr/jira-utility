@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Jira Insights - <span th:text="${month}"></span></title>
+</head>
+<body>
+<h1>Insights for <span th:text="${month}"></span></h1>
+<h2>Team Insights</h2>
+<p>Total Story Points: <span th:text="${insight.totalTeamStoryPoints}"></span></p>
+<h3>By Epic</h3>
+<ul>
+  <li th:each="entry : ${insight.epicStoryPoints}">
+    <span th:text="${entry.key} + ': ' + ${entry.value} + ' points'"></span>
+  </li>
+</ul>
+<p>Release Testing (QA_Efforts): <span th:text="${insight.releaseStoryPoints}"></span></p>
+
+<h2>Individual QA Efforts</h2>
+<ul>
+  <li th:each="qaEntry : ${insight.individualEfforts}">
+    <span th:text="${qaEntry.key}"></span>
+    <ul>
+      <li th:each="epicEntry : ${qaEntry.value}">
+        <span th:text="${epicEntry.key} + ': ' + ${epicEntry.value} + ' points'"></span>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<a th:href="@{/export-excel(month=${month})}">Export to Excel</a>
+</body>
+</html>
