@@ -2,31 +2,199 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
   <title>Jira Insights - <span th:text="${month}"></span></title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+  <style>
+    :root {
+      --primary: #2684FF;
+      --secondary: #0052CC;
+      --background: #F4F5F7;
+      --text: #172B4D;
+      --success: #36B37E;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h1, h2, h3 {
+      color: var(--primary);
+      margin-top: 1.5em;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      text-align: center;
+      margin-bottom: 1em;
+    }
+
+    .stats-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
+    }
+
+    .stats-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .chart-container {
+      margin: 20px 0;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      padding: 10px;
+      margin: 5px 0;
+      background: #F4F5F7;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    li:hover {
+      background: #E6E8ED;
+    }
+
+    .export-button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--success);
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 20px;
+      transition: background 0.2s;
+    }
+
+    .export-button:hover {
+      background: #2D9969;
+    }
+
+    .total-points {
+      font-size: 2em;
+      color: var(--primary);
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-<h1>Insights for <span th:text="${month}"></span></h1>
-<h2>Team Insights</h2>
-<p>Total Story Points: <span th:text="${insight.totalTeamStoryPoints}"></span></p>
-<h3>By Epic</h3>
-<ul>
-  <li th:each="entry : ${insight.epicStoryPoints}">
-    <span th:text="${entry.key} + ': ' + ${entry.value} + ' points'"></span>
-  </li>
-</ul>
-<p>Release Testing (QA_Efforts): <span th:text="${insight.releaseStoryPoints}"></span></p>
+<div class="container">
+  <h1>Insights for <span th:text="${month}"></span></h1>
 
-<h2>Individual QA Efforts</h2>
-<ul>
-  <li th:each="qaEntry : ${insight.individualEfforts}">
-    <span th:text="${qaEntry.key}"></span>
+  <div class="stats-card">
+    <h2>Team Overview</h2>
+    <div class="total-points">
+      <span th:text="${insight.totalTeamStoryPoints}"></span>
+      <div style="font-size: 0.5em;">Total Story Points</div>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="epicChart"></canvas>
+  </div>
+
+  <h2>Epic Breakdown</h2>
+  <div class="stats-grid">
+    <div class="stats-card" th:each="entry : ${insight.epicStoryPoints}">
+      <h3 th:text="${entry.key}"></h3>
+      <div class="total-points" th:text="${entry.value} + ' points'"></div>
+    </div>
+  </div>
+
+  <div class="stats-card">
+    <h2>Individual QA Efforts</h2>
     <ul>
-      <li th:each="epicEntry : ${qaEntry.value}">
-        <span th:text="${epicEntry.key} + ': ' + ${epicEntry.value} + ' points'"></span>
+      <li th:each="qaEntry : ${insight.individualEfforts}">
+        <h3 th:text="${qaEntry.key}"></h3>
+        <ul>
+          <li th:each="epicEntry : ${qaEntry.value}">
+            <span th:text="${epicEntry.key} + ': ' + ${epicEntry.value} + ' points'"></span>
+          </li>
+        </ul>
       </li>
     </ul>
-  </li>
-</ul>
+  </div>
 
-<a th:href="@{/export-excel(month=${month})}">Export to Excel</a>
+  <a class="export-button" th:href="@{/export-excel(month=${month})}">
+    Export to Excel
+  </a>
+</div>
+
+<script th:inline="javascript">
+  // Get epic data from Thymeleaf
+  const epicData = /*[[${insight.epicStoryPoints}]]*/ {};
+
+  // Create chart
+  const ctx = document.getElementById('epicChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(epicData),
+      datasets: [{
+        label: 'Story Points by Epic',
+        data: Object.values(epicData),
+        backgroundColor: '#2684FF',
+        borderColor: '#0052CC',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: 'Story Points Distribution'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
 </body>
 </html>
