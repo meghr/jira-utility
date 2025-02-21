@@ -17,22 +17,34 @@ public class JiraService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Add these properties to your application.properties or application.yml
     @Value("${jira.url}")
-    private String jiraUrl;  // e.g., "https://your-domain.atlassian.net"
+    private String jiraUrl;
 
     @Value("${jira.username}")
-    private String username;  // or API token
+    private String username;
 
     @Value("${jira.password}")
-    private String password;  // or API token
+    private String password;
 
     @Value("${jira.project.key}")
     private String projectKey;
 
+    // Inject the list of epic keys from configuration
+    @Value("${jira.epic.keys}")
+    private List<String> epicKeys;
+
     public List<JiraIssue> fetchJiraData(String month) {
-        String jql = String.format("project = %s AND updatedDate >= '%s-01' AND updatedDate <= '%s-31'",
-                projectKey, month, month);
+        String jql;
+        if (epicKeys == null || epicKeys.isEmpty()) {
+            // If no epic keys configured, fetch all issues for the project and month
+            jql = String.format("project = %s AND updatedDate >= '%s-01' AND updatedDate <= '%s-31'",
+                    projectKey, month, month);
+        } else {
+            // Fetch issues for the configured epic keys using customfield_29800
+            String epicKeysList = String.join(", ", epicKeys); // e.g., "XYZ, ABC, PQR"
+            jql = String.format("project = %s AND updatedDate >= '%s-01' AND updatedDate <= '%s-31' AND customfield_29800 IN (%s)",
+                    projectKey, month, month, epicKeysList);
+        }
         return fetchIssuesFromJira(jql);
     }
 
@@ -42,7 +54,6 @@ public class JiraService {
         try {
             String url = jiraUrl + "/rest/api/2/search?jql=" + jql + "&maxResults=1000";
 
-            // Set up headers for authentication
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(username, password);
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -56,24 +67,18 @@ public class JiraService {
             for (JsonNode issueNode : issuesNode) {
                 JiraIssue issue = new JiraIssue();
 
-                // Basic fields
                 issue.setKey(issueNode.path("key").asText());
 
-                // Epic link (custom field name might vary)
                 JsonNode fields = issueNode.path("fields");
-                String epicKey = fields.path("customfield_10011").asText(); // Adjust custom field ID
-                issue.setEpicKey(epicKey.isEmpty() ? null : epicKey);
+                String epicKeyFromField = fields.path("customfield_xyxx").asText();
+                issue.setEpicKey(epicKeyFromField.isEmpty() ? null : epicKeyFromField);
 
-                // Assignee
-                JsonNode assigneeNode = fields.path("assignee");
-                String assigneeEmail = assigneeNode.path("emailAddress").asText();
-                issue.setAssignee(assigneeEmail.isEmpty() ? null : assigneeEmail);
+                String assigneeName = fields.path("customfield_abcd").asText();
+                issue.setAssignee(assigneeName.isEmpty() ? null : assigneeName);
 
-                // Story points (custom field name might vary)
-                int storyPoints = fields.path("customfield_10024").asInt(0); // Adjust custom field ID
+                int storyPoints = fields.path("customfield_efgh").asInt(0);
                 issue.setStoryPoints(storyPoints);
 
-                // Labels
                 List<String> labels = new ArrayList<>();
                 JsonNode labelsNode = fields.path("labels");
                 labelsNode.forEach(label -> labels.add(label.asText()));
@@ -83,14 +88,13 @@ public class JiraService {
             }
 
         } catch (Exception e) {
-            // Handle errors appropriately (logging, etc.)
             e.printStackTrace();
         }
 
         return issues;
     }
 
-    // Keep your existing calculateInsights method as is
+    // calculateInsights method remains unchanged
     public Insight calculateInsights(List<JiraIssue> issues) {
         Insight insight = new Insight();
         Map<String, Integer> epicPoints = new HashMap<>();
