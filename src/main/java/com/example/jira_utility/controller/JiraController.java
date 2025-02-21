@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.io.IOException;
 import java.util.List;
 
-@Controller // Must be present
+@Controller
 public class JiraController {
 
     @Autowired
