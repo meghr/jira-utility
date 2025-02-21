@@ -1,0 +1,55 @@
+private List<JiraIssue> fetchIssuesFromJira(String jql) {
+        List<JiraIssue> issues = new ArrayList<>();
+
+        try {
+            String url = jiraUrl + "/rest/api/2/search?jql=" + jql + "&maxResults=1000";
+
+            // Set up headers for authentication
+            HttpHeaders headers = new HttpHeaders();
+            // Use Basic Auth with username (email) and API token
+            headers.setBasicAuth(username, apiToken); // username is email, apiToken is the token
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new RuntimeException("Unauthorized: Check your Jira credentials (email and API token)");
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode issuesNode = root.path("issues");
+
+            for (JsonNode issueNode : issuesNode) {
+                JiraIssue issue = new JiraIssue();
+
+                issue.setKey(issueNode.path("key").asText());
+
+                JsonNode fields = issueNode.path("fields");
+                String epicKeyFromField = fields.path("customfield_29800").asText();
+                issue.setEpicKey(epicKeyFromField.isEmpty() ? null : epicKeyFromField);
+
+                String assigneeName = fields.path("customfield_19414").asText();
+                issue.setAssignee(assigneeName.isEmpty() ? null : assigneeName);
+
+                int storyPoints = fields.path("customfield_10024").asInt(0);
+                issue.setStoryPoints(storyPoints);
+
+                List<String> labels = new ArrayList<>();
+                JsonNode labelsNode = fields.path("labels");
+                labelsNode.forEach(label -> labels.add(label.asText()));
+                issue.setLabels(labels.toArray(new String[0]));
+
+                issues.add(issue);
+            }
+
+        } catch (Exception e) {
+            // Improved error handling
+            if (e instanceof org.springframework.web.client.HttpClientErrorException.Unauthorized) {
+                throw new RuntimeException("401 Unauthorized: Invalid Jira credentials (email or API token)", e);
+            }
+            throw new RuntimeException("Error fetching Jira data: " + e.getMessage(), e);
+        }
+
+        return issues;
+    }
