@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Jira Utility</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <style>
+    :root {
+        --primary: #2684FF;
+        --secondary: #0052CC;
+        --background: #F4F5F7;
+        --text: #172B4D;
+        --error: #FF5630;
+        --success: #36B37E;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--background);
+        color: var(--text);
+    }
+
+    .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+        animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    h1 {
+        color: var(--primary);
+        margin-bottom: 1.5rem;
+        text-align: center;
+        font-size: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #DFE1E6;
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(38, 132, 255, 0.2);
+    }
+
+    button {
+        width: 100%;
+        padding: 0.75rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    button:hover {
+        background: var(--secondary);
+        transform: translateY(-1px);
+    }
+
+    button:active {
+        transform: translateY(1px);
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        margin-top: 1rem;
+    }
+
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .quick-select {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .quick-select button {
+        background: #F4F5F7;
+        color: var(--text);
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .quick-select button:hover {
+        background: #E6E8ED;
+    }
+
+    .error-message {
+        color: var(--error);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        display: none;
+    }
+
+    .success-message {
+        color: var(--success);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        display: none;
+    }
+
+    .selected-date {
+        font-size: 0.9rem;
+        color: #6B778C;
+        margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Jira Insights</h1>
+
+  <div class="quick-select">
+    <button type="button" class="month-quick-select" data-month="current">Current Month</button>
+    <button type="button" class="month-quick-select" data-month="last">Last Month</button>
+    <button type="button" class="month-quick-select" data-month="next">Next Month</button>
+  </div>
+
+  <form id="insightForm" action="/fetch-insights" method="post">
+    <div class="form-group">
+      <label for="startDate">Start Date</label>
+      <input
+              type="text"
+              id="startDate"
+              name="startDate"
+              placeholder="Select start date"
+              required
+              autocomplete="off"
+      />
+      <div class="selected-date" id="startDateDisplay"></div>
+      <div class="error-message">Please enter a valid start date</div>
+    </div>
+
+    <div class="form-group">
+      <label for="endDate">End Date</label>
+      <input
+              type="text"
+              id="endDate"
+              name="endDate"
+              placeholder="Select end date"
+              required
+              autocomplete="off"
+      />
+      <div class="selected-date" id="endDateDisplay"></div>
+      <div class="error-message">Please enter a valid end date</div>
+    </div>
+
+    <button type="submit" id="submitButton">
+      Fetch Insights
+    </button>
+  </form>
+
+  <div class="loading">
+    <div class="loading-spinner"></div>
+    <p>Fetching insights...</p>
+  </div>
+
+  <div class="success-message">Successfully fetched insights!</div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      // Initialize date pickers with flatpickr
+      const startDatePicker = flatpickr("#startDate", {
+          dateFormat: "d-m-Y",
+          altFormat: "F d, Y",
+          altInput: true,
+          static: true,
+          disableMobile: true,
+          onChange: function(selectedDates, dateStr) {
+              document.getElementById('startDateDisplay').textContent = `Selected: ${dateStr}`;
+          }
+      });
+
+      const endDatePicker = flatpickr("#endDate", {
+          dateFormat: "d-m-Y",
+          altFormat: "F d, Y",
+          altInput: true,
+          static: true,
+          disableMobile: true,
+          onChange: function(selectedDates, dateStr) {
+              document.getElementById('endDateDisplay').textContent = `Selected: ${dateStr}`;
+          }
+      });
+
+      // Quick select buttons for Current Month, Last Month, and Next Month
+      document.querySelectorAll('.month-quick-select').forEach(button => {
+          button.addEventListener('click', () => {
+              const type = button.dataset.month;
+              const now = new Date();
+              let start, end;
+
+              switch(type) {
+                  case 'current':
+                      start = new Date(now.getFullYear(), now.getMonth(), 1);
+                      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                      break;
+                  case 'last':
+                      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                      end = new Date(now.getFullYear(), now.getMonth(), 0);
+                      break;
+                  case 'next':
+                      start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                      end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                      break;
+              }
+
+              // Format dates to DD-MM-YYYY
+              const formatDate = (date) => {
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const year = date.getFullYear();
+                  return `${day}-${month}-${year}`;
+              };
+
+              startDatePicker.setDate(formatDate(start));
+              endDatePicker.setDate(formatDate(end));
+          });
+      });
+
+      // Form submission handling
+      const form = document.getElementById('insightForm');
+      const loading = document.querySelector('.loading');
+      const errorMessages = document.querySelectorAll('.error-message');
+      const successMessage = document.querySelector('.success-message');
+
+      form.addEventListener('submit', function(e) {
+          e.preventDefault();
+
+          // Validate start and end dates
+          const startDate = document.getElementById('startDate').value;
+          const endDate = document.getElementById('endDate').value;
+          const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
+
+          if (!startDate || !endDate || !dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+              errorMessages.forEach(msg => msg.style.display = 'block');
+              successMessage.style.display = 'none';
+              return;
+          }
+
+          errorMessages.forEach(msg => msg.style.display = 'none');
+          loading.style.display = 'block';
+
+          // Simulate loading state (remove this in production)
+          setTimeout(() => {
+              loading.style.display = 'none';
+              successMessage.style.display = 'block';
+              form.submit();
+          }, 1000);
+      });
+  });
+</script>
+</body>
+</html>

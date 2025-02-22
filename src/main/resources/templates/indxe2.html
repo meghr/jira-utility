@@ -1,0 +1,194 @@
+import React, { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar, Loader } from 'lucide-react';
+
+const JiraDatePicker = () => {
+const [startDate, setStartDate] = useState('');
+const [endDate, setEndDate] = useState('');
+const [isLoading, setIsLoading] = useState(false);
+const [showError, setShowError] = useState(false);
+const [showSuccess, setShowSuccess] = useState(false);
+
+// Helper function to format date to DD-MM-YYYY
+const formatDate = (date) => {
+const day = String(date.getDate()).padStart(2, '0');
+const month = String(date.getMonth() + 1).padStart(2, '0');
+const year = date.getFullYear();
+return `${day}-${month}-${year}`;
+};
+
+// Helper function to convert DD-MM-YYYY to YYYY-MM-DD for input
+const convertToInputFormat = (dateStr) => {
+if (!dateStr) return '';
+const [day, month, year] = dateStr.split('-');
+return `${year}-${month}-${day}`;
+};
+
+// Helper function to convert YYYY-MM-DD to DD-MM-YYYY
+const convertToDisplayFormat = (dateStr) => {
+if (!dateStr) return '';
+const [year, month, day] = dateStr.split('-');
+return `${day}-${month}-${year}`;
+};
+
+// Function to handle quick select buttons for Current Month and Last Month
+const handleQuickSelect = (type) => {
+const now = new Date();
+let start = new Date();
+let end = new Date();
+
+switch (type) {
+case 'current':
+// Set to first day of current month
+start = new Date(now.getFullYear(), now.getMonth(), 1);
+// Set to last day of current month
+end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+break;
+case 'last':
+// Set to first day of last month
+start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+// Set to last day of last month
+end = new Date(now.getFullYear(), now.getMonth(), 0);
+break;
+default:
+return;
+}
+
+setStartDate(formatDate(start));
+setEndDate(formatDate(end));
+};
+
+const handleSubmit = (e) => {
+e.preventDefault();
+
+if (!startDate || !endDate) {
+setShowError(true);
+return;
+}
+
+setIsLoading(true);
+setShowError(false);
+setShowSuccess(false);
+
+// Convert dates back to YYYY-MM-DD format for API if needed
+const apiStartDate = convertToInputFormat(startDate);
+const apiEndDate = convertToInputFormat(endDate);
+
+console.log('Submitting date range:', { startDate: apiStartDate, endDate: apiEndDate });
+
+setTimeout(() => {
+setIsLoading(false);
+setShowSuccess(true);
+}, 1000);
+};
+
+return (
+<div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+  <Card className="w-full max-w-lg animate-in fade-in duration-500">
+    <CardHeader>
+      <CardTitle className="text-3xl font-bold text-center text-primary">
+        Jira Insights
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => handleQuickSelect('current')}
+        >
+        Current Month
+        </Button>
+        <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => handleQuickSelect('last')}
+        >
+        Last Month
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block font-medium mb-2" htmlFor="startDate">
+              Start Date
+            </label>
+            <div className="relative">
+              <input
+                      type="date"
+                      id="startDate"
+                      name="startDate"
+                      value={convertToInputFormat(startDate)}
+                      onChange={(e) => setStartDate(convertToDisplayFormat(e.target.value))}
+              className="w-full p-3 border-2 border-gray-200 rounded-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pl-10"
+              required
+              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            </div>
+            {startDate && (
+            <div className="text-sm text-gray-600 mt-1">
+              Selected: {startDate}
+            </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block font-medium mb-2" htmlFor="endDate">
+              End Date
+            </label>
+            <div className="relative">
+              <input
+                      type="date"
+                      id="endDate"
+                      name="endDate"
+                      value={convertToInputFormat(endDate)}
+                      onChange={(e) => setEndDate(convertToDisplayFormat(e.target.value))}
+              className="w-full p-3 border-2 border-gray-200 rounded-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pl-10"
+              required
+              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            </div>
+            {endDate && (
+            <div className="text-sm text-gray-600 mt-1">
+              Selected: {endDate}
+            </div>
+            )}
+          </div>
+        </div>
+
+        <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !startDate || !endDate}
+        >
+          {isLoading ? (
+          <div className="flex items-center justify-center">
+            <Loader className="animate-spin mr-2 h-5 w-5" />
+            Fetching insights...
+          </div>
+          ) : (
+          'Fetch Insights'
+          )}
+        </Button>
+      </form>
+
+      {showError && (
+      <div className="mt-4 text-sm text-red-600">
+        Please select both start and end dates
+      </div>
+      )}
+
+      {showSuccess && (
+      <div className="mt-4 text-sm text-green-600">
+        Successfully fetched insights!
+      </div>
+      )}
+    </CardContent>
+  </Card>
+</div>
+);
+};
+
+export default JiraDatePicker;

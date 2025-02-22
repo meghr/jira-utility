@@ -1,0 +1,157 @@
+import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown, ChevronUp, Download } from 'lucide-react';
+
+const JiraInsightsDashboard = () => {
+const [expandedUser, setExpandedUser] = useState(null);
+
+// Sample data - replace with actual data from your backend
+const data = {
+month: "February 2025",
+totalTeamStoryPoints: 245,
+epicStoryPoints: {
+"Backend Infrastructure": 85,
+"Frontend Features": 65,
+"API Integration": 45,
+"Security Updates": 30,
+"Performance Optimization": 20
+},
+individualEfforts: {
+"Alice Chen": {
+"Backend Infrastructure": 30,
+"API Integration": 15
+},
+"Bob Smith": {
+"Frontend Features": 35,
+"Security Updates": 20
+},
+"Carol Davis": {
+"Performance Optimization": 20,
+"Frontend Features": 30
+}
+}
+};
+
+// Transform epic data for recharts
+const chartData = Object.entries(data.epicStoryPoints).map(([name, points]) => ({
+name,
+points
+}));
+
+// Custom color palette
+const colors = {
+primary: '#2563eb',
+secondary: '#7c3aed',
+accent: '#0ea5e9',
+success: '#22c55e',
+warning: '#eab308',
+background: '#f8fafc'
+};
+
+return (
+<div className="w-full max-w-6xl mx-auto p-6 space-y-6">
+    <Card className="bg-white">
+        <CardHeader>
+            <CardTitle className="text-3xl font-bold text-center text-primary">
+                Insights for {data.month}
+            </CardTitle>
+            <div className="text-4xl font-bold text-center text-primary mt-4">
+                {data.totalTeamStoryPoints}
+                <div className="text-sm font-normal text-gray-600">Total Story Points</div>
+            </div>
+        </CardHeader>
+    </Card>
+
+    <Tabs defaultValue="chart" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="chart">Chart View</TabsTrigger>
+            <TabsTrigger value="grid">Grid View</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chart" className="mt-6">
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="h-96">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Bar
+                                        dataKey="points"
+                                        fill={colors.primary}
+                                        radius={[4, 4, 0, 0]}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="grid" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(data.epicStoryPoints).map(([epic, points]) => (
+                <Card key={epic} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="pt-6">
+                        <h3 className="font-semibold text-lg mb-2">{epic}</h3>
+                        <div className="text-3xl font-bold text-primary">{points}</div>
+                        <div className="text-sm text-gray-600">story points</div>
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+        </TabsContent>
+    </Tabs>
+
+    <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+                Individual QA Efforts
+                <Download className="h-5 w-5 text-gray-500 cursor-pointer hover:text-primary" />
+            </CardTitle>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                {Object.entries(data.individualEfforts).map(([name, efforts]) => (
+                <div
+                        key={name}
+                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
+                    <div
+                            className="flex items-center justify-between cursor-pointer"
+                            onClick={() => setExpandedUser(expandedUser === name ? null : name)}
+                    >
+                    <h3 className="font-semibold">{name}</h3>
+                    {expandedUser === name ? (
+                    <ChevronUp className="h-5 w-5 text-gray-500" />
+                    ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                    )}
+                </div>
+
+                {expandedUser === name && (
+                <div className="mt-4 space-y-2">
+                    {Object.entries(efforts).map(([epic, points]) => (
+                    <div key={epic} className="flex items-center justify-between">
+                        <span className="text-gray-600">{epic}</span>
+                        <Badge variant="secondary">{points} points</Badge>
+                    </div>
+                    ))}
+                </div>
+                )}
+            </div>
+            ))}
+</div>
+</CardContent>
+</Card>
+</div>
+);
+};
+
+export default JiraInsightsDashboard;
